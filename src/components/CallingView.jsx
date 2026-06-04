@@ -3,7 +3,6 @@ import { ChevronLeft, ChevronRight, Phone, Building2, User, Mail, MapPin, Zap } 
 import { CATEGORIES } from '../App'
 
 const CATEGORY_ORDER = ['uncategorized', 'no_answer', 'responded', 'interested', 'meeting']
-
 const ACTION_CATEGORIES = ['no_answer', 'responded', 'interested', 'meeting']
 
 const CATEGORY_ICONS = {
@@ -52,7 +51,6 @@ export default function CallingView({
   const handleCategorize = (category) => {
     if (!lead) return
     onCategorize(lead.orgNr, category)
-    // advance: stay at same index (next lead slides in), or go back if at end
     const newTotal = total - 1
     if (newTotal <= 0) return
     const nextIdx = safeIndex >= newTotal ? newTotal - 1 : safeIndex
@@ -67,7 +65,6 @@ export default function CallingView({
   const phoneRaw = lead?.telefonnummer ? String(lead.telefonnummer).replace(/\D/g, '') : ''
   const phoneFormatted = formatPhone(phoneRaw)
   const telHref = phoneRaw ? `tel:+47${phoneRaw}` : '#'
-
   const aktivity = Array.isArray(lead?.aktivitet)
     ? lead.aktivitet.join(' ')
     : (lead?.aktivitet || '')
@@ -84,11 +81,11 @@ export default function CallingView({
             return (
               <button
                 key={cat}
-                onClick={() => { onFilterChange(cat); }}
+                onClick={() => onFilterChange(cat)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
                   isActive
                     ? cfg.tabActiveClass
-                    : `text-gray-500 border-transparent hover:text-gray-300 hover:bg-gray-800`
+                    : 'text-gray-500 border-transparent hover:text-gray-300 hover:bg-gray-800'
                 }`}
               >
                 {CATEGORY_ICONS[cat] && <span className="text-xs">{CATEGORY_ICONS[cat]}</span>}
@@ -107,14 +104,14 @@ export default function CallingView({
       {/* Progress bar */}
       {total > 0 && (
         <div className="bg-gray-900 border-b border-gray-800 px-4 py-2 flex items-center justify-between text-xs text-gray-500">
-          <span>{safeIndex + 1} of {total}</span>
+          <span>{safeIndex + 1} av {total}</span>
           <div className="flex-1 mx-4 bg-gray-800 rounded-full h-1">
             <div
               className="bg-indigo-600 h-1 rounded-full transition-all"
               style={{ width: `${((safeIndex + 1) / total) * 100}%` }}
             />
           </div>
-          <span className="text-gray-600">{total - safeIndex - 1} remaining</span>
+          <span className="text-gray-600">{total - safeIndex - 1} igjen</span>
         </div>
       )}
 
@@ -123,14 +120,13 @@ export default function CallingView({
         {!lead ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 mt-16">
             <div className="text-5xl mb-2">🎉</div>
-            <h2 className="text-xl font-semibold text-white">All done here!</h2>
+            <h2 className="text-xl font-semibold text-white">Alt ferdig her!</h2>
             <p className="text-gray-500 text-sm max-w-xs">
-              No leads in this category. Switch to another tab or upload a new file.
+              Ingen leads i denne kategorien. Bytt fane eller gå tilbake til listelisten.
             </p>
           </div>
         ) : (
           <div className="w-full max-w-2xl">
-            {/* Current category badge */}
             {lead._category !== 'uncategorized' && (
               <div className="flex justify-center mb-3">
                 <CategoryBadge category={lead._category} />
@@ -139,10 +135,10 @@ export default function CallingView({
 
             {/* Main card */}
             <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden shadow-2xl">
-              {/* Business + Owner header */}
+              {/* Business + Owner */}
               <div className="p-6 pb-4 border-b border-gray-800">
                 <div className="flex items-start gap-3 mb-3">
-                  <div className="mt-1 p-2 bg-indigo-600/20 rounded-lg border border-indigo-500/20">
+                  <div className="mt-1 p-2 bg-indigo-600/20 rounded-lg border border-indigo-500/20 shrink-0">
                     <Building2 size={20} className="text-indigo-400" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -174,13 +170,10 @@ export default function CallingView({
                 </div>
               </div>
 
-              {/* Phone number - the hero element */}
+              {/* Phone — hero element */}
               <div className="px-6 py-6 border-b border-gray-800 text-center">
                 {phoneRaw ? (
-                  <a
-                    href={telHref}
-                    className="group inline-flex flex-col items-center gap-2"
-                  >
+                  <a href={telHref} className="group inline-flex flex-col items-center gap-2">
                     <div className="flex items-center gap-3">
                       <div className="p-2.5 bg-green-600 rounded-xl group-hover:bg-green-500 transition-colors">
                         <Phone size={22} className="text-white" />
@@ -190,13 +183,13 @@ export default function CallingView({
                       </span>
                     </div>
                     <span className="text-xs text-gray-600 group-hover:text-green-600 transition-colors">
-                      Tap to call · +47 {phoneFormatted}
+                      Trykk for å ringe · +47 {phoneFormatted}
                     </span>
                   </a>
                 ) : (
                   <div className="flex items-center justify-center gap-2 text-gray-600">
                     <Phone size={18} />
-                    <span>No phone number</span>
+                    <span>Ingen telefonnummer</span>
                   </div>
                 )}
                 {lead.mobiloperator && (
@@ -229,7 +222,7 @@ export default function CallingView({
               </div>
             </div>
 
-            {/* Category action buttons */}
+            {/* Category buttons */}
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
               {ACTION_CATEGORIES.map(cat => {
                 const cfg = CATEGORIES[cat]
@@ -257,7 +250,7 @@ export default function CallingView({
                 className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl text-sm font-medium transition-colors"
               >
                 <ChevronLeft size={16} />
-                Previous
+                Forrige
               </button>
 
               <span className="text-xs text-gray-600 font-mono">
@@ -269,7 +262,7 @@ export default function CallingView({
                 disabled={safeIndex >= total - 1}
                 className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl text-sm font-medium transition-colors"
               >
-                Next
+                Neste
                 <ChevronRight size={16} />
               </button>
             </div>

@@ -4,3 +4,4 @@ dist/
 *.local
 output-*.json
 leads-*.json
+public/lead_lists/index.json

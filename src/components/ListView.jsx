@@ -43,19 +43,19 @@ function downloadJson(filename, data) {
 
 const COLUMNS = [
   { key: '_category', label: 'Status', sortable: true },
-  { key: 'bedriftsnavn', label: 'Business Name', sortable: true },
-  { key: 'eier', label: 'Owner', sortable: true },
-  { key: 'telefonnummer', label: 'Phone', sortable: false },
-  { key: 'epost', label: 'Email', sortable: true },
-  { key: 'adresse_1881', label: 'Address', sortable: true },
-  { key: 'aktivitet', label: 'Activity', sortable: false },
-  { key: 'alder', label: 'Age', sortable: true },
-  { key: 'mobiloperator', label: 'Operator', sortable: true },
+  { key: 'bedriftsnavn', label: 'Bedriftsnavn', sortable: true },
+  { key: 'eier', label: 'Eier', sortable: true },
+  { key: 'telefonnummer', label: 'Telefon', sortable: false },
+  { key: 'epost', label: 'E-post', sortable: true },
+  { key: 'adresse_1881', label: 'Adresse', sortable: true },
+  { key: 'aktivitet', label: 'Aktivitet', sortable: false },
+  { key: 'alder', label: 'Alder', sortable: true },
+  { key: 'mobiloperator', label: 'Operatør', sortable: true },
   { key: 'orgNr', label: 'Org.nr', sortable: true },
-  { key: 'registrert_dato', label: 'Registered', sortable: true },
+  { key: 'registrert_dato', label: 'Registrert', sortable: true },
 ]
 
-export default function ListView({ leads, leadsRaw, categoriesMap, onGoToLead }) {
+export default function ListView({ leads, leadsRaw, categoriesMap, listName, onGoToLead }) {
   const [filterCategory, setFilterCategory] = useState('all')
   const [sortKey, setSortKey] = useState('bedriftsnavn')
   const [sortDir, setSortDir] = useState('asc')
@@ -91,7 +91,7 @@ export default function ListView({ leads, leadsRaw, categoriesMap, onGoToLead })
         va = CATEGORY_ORDER.indexOf(va)
         vb = CATEGORY_ORDER.indexOf(vb)
       } else if (typeof va === 'number' && typeof vb === 'number') {
-        // numeric compare
+        // numeric
       } else {
         va = String(va).toLowerCase()
         vb = String(vb).toLowerCase()
@@ -100,6 +100,7 @@ export default function ListView({ leads, leadsRaw, categoriesMap, onGoToLead })
       if (va > vb) return sortDir === 'asc' ? 1 : -1
       return 0
     })
+
     return rows
   }, [leads, filterCategory, sortKey, sortDir, search])
 
@@ -121,11 +122,11 @@ export default function ListView({ leads, leadsRaw, categoriesMap, onGoToLead })
       )
     )
     const dateStr = new Date().toISOString().split('T')[0]
-    const label = cat === 'all' ? 'all' : CATEGORIES[cat]?.label.toLowerCase().replace(/\s+/g, '_')
-    downloadJson(`leads_${label}_${dateStr}.json`, subset)
+    const label = cat === 'all' ? 'alle' : CATEGORIES[cat]?.label.toLowerCase().replace(/\s+/g, '_')
+    downloadJson(`${listName}_${label}_${dateStr}.json`, subset)
   }
 
-  const SortIcon = ({ col }) => {
+  function SortIcon({ col }) {
     if (!col.sortable) return null
     if (sortKey !== col.key) return <ArrowUpDown size={12} className="text-gray-600 ml-1 inline" />
     return sortDir === 'asc'
@@ -138,7 +139,6 @@ export default function ListView({ leads, leadsRaw, categoriesMap, onGoToLead })
       {/* Filter + download bar */}
       <div className="bg-gray-900 border-b border-gray-800 px-4 py-3">
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          {/* All tab */}
           <button
             onClick={() => setFilterCategory('all')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
@@ -147,7 +147,7 @@ export default function ListView({ leads, leadsRaw, categoriesMap, onGoToLead })
                 : 'text-gray-500 border-transparent hover:text-gray-300 hover:bg-gray-800'
             }`}
           >
-            All
+            Alle
             <span className="px-1.5 py-0.5 rounded-full text-xs font-mono bg-gray-800 text-gray-500">
               {counts.all}
             </span>
@@ -180,7 +180,7 @@ export default function ListView({ leads, leadsRaw, categoriesMap, onGoToLead })
         <div className="flex items-center gap-2 flex-wrap">
           <input
             type="text"
-            placeholder="Search name, business, phone..."
+            placeholder="Søk navn, bedrift, telefon..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="flex-1 min-w-48 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
@@ -190,7 +190,7 @@ export default function ListView({ leads, leadsRaw, categoriesMap, onGoToLead })
             className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-sm text-gray-300 hover:text-white transition-colors whitespace-nowrap"
           >
             <Download size={14} />
-            Download {filterCategory === 'all' ? 'All' : CATEGORIES[filterCategory]?.label} ({filtered.length})
+            Last ned {filterCategory === 'all' ? 'alle' : CATEGORIES[filterCategory]?.label} ({filtered.length})
           </button>
         </div>
       </div>
@@ -213,7 +213,7 @@ export default function ListView({ leads, leadsRaw, categoriesMap, onGoToLead })
                 </th>
               ))}
               <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Go To
+                Gå til
               </th>
             </tr>
           </thead>
@@ -221,12 +221,14 @@ export default function ListView({ leads, leadsRaw, categoriesMap, onGoToLead })
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={COLUMNS.length + 1} className="px-4 py-12 text-center text-gray-600">
-                  No leads found
+                  Ingen leads funnet
                 </td>
               </tr>
             ) : (
               filtered.map((lead, i) => {
-                const phoneRaw = lead.telefonnummer ? String(lead.telefonnummer).replace(/\D/g, '') : ''
+                const phoneRaw = lead.telefonnummer
+                  ? String(lead.telefonnummer).replace(/\D/g, '')
+                  : ''
                 const aktivity = Array.isArray(lead.aktivitet)
                   ? lead.aktivitet.join(' ')
                   : (lead.aktivitet || '')
@@ -267,7 +269,10 @@ export default function ListView({ leads, leadsRaw, categoriesMap, onGoToLead })
                     <td className="px-4 py-3 text-gray-400 max-w-[180px] truncate">
                       {lead.adresse_1881 || '—'}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate" title={aktivity}>
+                    <td
+                      className="px-4 py-3 text-gray-500 max-w-[200px] truncate"
+                      title={aktivity}
+                    >
                       {aktivity || '—'}
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-center">
@@ -286,10 +291,10 @@ export default function ListView({ leads, leadsRaw, categoriesMap, onGoToLead })
                       <button
                         onClick={() => onGoToLead(lead.orgNr)}
                         className="flex items-center gap-1 px-2 py-1 bg-gray-800 hover:bg-indigo-700 rounded-md text-xs text-gray-400 hover:text-white transition-colors"
-                        title="Go to this lead in calling view"
+                        title="Gå til denne leaden i ringevisning"
                       >
                         <ExternalLink size={11} />
-                        Call
+                        Ring
                       </button>
                     </td>
                   </tr>
@@ -300,9 +305,8 @@ export default function ListView({ leads, leadsRaw, categoriesMap, onGoToLead })
         </table>
       </div>
 
-      {/* Footer count */}
       <div className="bg-gray-900 border-t border-gray-800 px-4 py-2 text-xs text-gray-600">
-        Showing {filtered.length} of {leads.length} leads
+        Viser {filtered.length} av {leads.length} leads
       </div>
     </div>
   )

@@ -1,115 +1,140 @@
-import { useState, useEffect } from 'react'
-import UploadScreen from './components/UploadScreen'
+import { useState, useEffect, useCallback } from 'react'
+import ListSelector from './components/ListSelector'
 import CallingView from './components/CallingView'
 import ListView from './components/ListView'
-import { Phone, Table2, Upload } from 'lucide-react'
+import { Phone, Table2, ArrowLeft } from 'lucide-react'
 
-const STORAGE_KEY = 'crm_data_v1'
+const STORAGE_KEY = 'crm_data_v2'
 
 export const CATEGORIES = {
   uncategorized: {
-    label: 'New',
-    tabLabel: 'New / Uncalled',
+    label: 'Nye',
+    tabLabel: 'Nye / Uringte',
     badgeClass: 'bg-gray-700 text-gray-300 border border-gray-600',
     btnClass: 'bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white',
-    tabClass: 'text-gray-400 border-gray-700',
     tabActiveClass: 'bg-gray-800 text-white border-gray-600',
   },
   no_answer: {
-    label: 'No Answer',
-    tabLabel: 'No Answer',
+    label: 'Ikke svar',
+    tabLabel: 'Ikke svar',
     badgeClass: 'bg-red-900/60 text-red-300 border border-red-800',
     btnClass: 'bg-red-800 hover:bg-red-700 border border-red-700 text-red-100',
-    tabClass: 'text-red-400 border-red-900',
     tabActiveClass: 'bg-red-900/40 text-red-200 border-red-700',
   },
   responded: {
-    label: 'Responded',
-    tabLabel: 'Responded',
+    label: 'Svarte',
+    tabLabel: 'Svarte',
     badgeClass: 'bg-blue-900/60 text-blue-300 border border-blue-800',
     btnClass: 'bg-blue-700 hover:bg-blue-600 border border-blue-600 text-blue-100',
-    tabClass: 'text-blue-400 border-blue-900',
     tabActiveClass: 'bg-blue-900/40 text-blue-200 border-blue-700',
   },
   interested: {
-    label: 'Interested',
-    tabLabel: 'Interested',
+    label: 'Interessert',
+    tabLabel: 'Interessert',
     badgeClass: 'bg-amber-900/60 text-amber-300 border border-amber-800',
     btnClass: 'bg-amber-600 hover:bg-amber-500 border border-amber-500 text-amber-100',
-    tabClass: 'text-amber-400 border-amber-900',
     tabActiveClass: 'bg-amber-900/40 text-amber-200 border-amber-700',
   },
   meeting: {
-    label: 'Wants Meeting',
-    tabLabel: 'Wants Meeting',
+    label: 'Vil ha møte',
+    tabLabel: 'Vil ha møte',
     badgeClass: 'bg-green-900/60 text-green-300 border border-green-800',
     btnClass: 'bg-green-700 hover:bg-green-600 border border-green-600 text-green-100',
-    tabClass: 'text-green-400 border-green-900',
     tabActiveClass: 'bg-green-900/40 text-green-200 border-green-700',
   },
 }
 
 export default function App() {
+  const [lists, setLists] = useState({})
+  const [activeListId, setActiveListId] = useState(null)
   const [view, setView] = useState('calling')
-  const [leads, setLeads] = useState(null)
-  const [categories, setCategories] = useState({})
-  const [indices, setIndices] = useState({})
-  const [filterCategory, setFilterCategory] = useState('uncategorized')
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const data = JSON.parse(stored)
-        setLeads(data.leads)
-        setCategories(data.categories || {})
-        setIndices(data.indices || {})
-        setFilterCategory(data.filterCategory || 'uncategorized')
+        setLists(data.lists || {})
+        setActiveListId(data.activeListId || null)
         setView(data.view || 'calling')
       }
     } catch {}
   }, [])
 
   useEffect(() => {
-    if (leads) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        leads, categories, indices, filterCategory, view,
-      }))
-    }
-  }, [leads, categories, indices, filterCategory, view])
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ lists, activeListId, view }))
+  }, [lists, activeListId, view])
 
-  const handleUpload = (data) => {
-    setLeads(data)
-    setCategories({})
-    setIndices({})
-    setFilterCategory('uncategorized')
+  const activeList = activeListId ? lists[activeListId] : null
+
+  const updateActiveList = useCallback((updater) => {
+    setLists(prev => ({
+      ...prev,
+      [activeListId]: updater(prev[activeListId]),
+    }))
+  }, [activeListId])
+
+  const handleAddList = (name, filename, leads, source = 'uploaded') => {
+    const id = source === 'bundled'
+      ? `bundled:${filename.replace('.json', '')}`
+      : `uploaded:${Date.now()}`
+    const newList = {
+      id, name, filename, source, leads,
+      categories: {},
+      indices: {},
+      filterCategory: 'uncategorized',
+      createdAt: new Date().toISOString(),
+    }
+    setLists(prev => ({ ...prev, [id]: newList }))
+    setActiveListId(id)
     setView('calling')
   }
 
-  const handleReset = () => {
-    if (window.confirm('Clear all data and upload a new file? Progress will be lost.')) {
-      localStorage.removeItem(STORAGE_KEY)
-      setLeads(null)
-      setCategories({})
-      setIndices({})
-    }
+  const handleDeleteList = (id) => {
+    setLists(prev => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    if (activeListId === id) setActiveListId(null)
   }
 
   const handleCategorize = (orgNr, category) => {
-    setCategories(prev => ({ ...prev, [orgNr]: category }))
+    updateActiveList(list => ({
+      ...list,
+      categories: { ...list.categories, [orgNr]: category },
+    }))
   }
 
-  const getIndex = (cat) => indices[cat] || 0
-  const setIndex = (cat, idx) => setIndices(prev => ({ ...prev, [cat]: idx }))
+  const currentFilter = activeList?.filterCategory || 'uncategorized'
 
-  if (!leads) {
-    return <UploadScreen onUpload={handleUpload} />
+  const getIndex = (cat) => activeList?.indices?.[cat] || 0
+  const setIndex = (cat, idx) => {
+    updateActiveList(list => ({
+      ...list,
+      indices: { ...list.indices, [cat]: idx },
+    }))
   }
 
-  const leadsArray = Object.entries(leads).map(([orgNr, data]) => ({
+  const setFilterCategory = (cat) => {
+    updateActiveList(list => ({ ...list, filterCategory: cat }))
+  }
+
+  if (!activeList) {
+    return (
+      <ListSelector
+        lists={lists}
+        onOpen={(id) => { setActiveListId(id); setView('calling') }}
+        onAdd={handleAddList}
+        onDelete={handleDeleteList}
+      />
+    )
+  }
+
+  const leadsArray = Object.entries(activeList.leads).map(([orgNr, data]) => ({
     orgNr,
     ...data,
-    _category: categories[orgNr] || 'uncategorized',
+    _category: activeList.categories[orgNr] || 'uncategorized',
   }))
 
   const counts = Object.fromEntries(
@@ -124,14 +149,24 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col">
       <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-bold text-white tracking-tight">CRM Caller</span>
-          <span className="text-xs text-gray-500 hidden sm:block">
-            {totalCalled}/{leadsArray.length} called
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={() => setActiveListId(null)}
+            className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-sm shrink-0"
+          >
+            <ArrowLeft size={15} />
+            <span className="hidden sm:block">Lister</span>
+          </button>
+          <span className="text-gray-700 shrink-0">|</span>
+          <span className="text-sm font-semibold text-white truncate max-w-[140px] sm:max-w-xs">
+            {activeList.name}
+          </span>
+          <span className="text-xs text-gray-500 hidden sm:block shrink-0">
+            {totalCalled}/{leadsArray.length} ringt
           </span>
         </div>
 
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => setView('calling')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
@@ -141,7 +176,7 @@ export default function App() {
             }`}
           >
             <Phone size={14} />
-            <span className="hidden sm:block">Calling</span>
+            <span className="hidden sm:block">Ringe</span>
           </button>
           <button
             onClick={() => setView('list')}
@@ -152,15 +187,7 @@ export default function App() {
             }`}
           >
             <Table2 size={14} />
-            <span className="hidden sm:block">List View</span>
-          </button>
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-gray-500 hover:text-white hover:bg-gray-800 transition-colors ml-1"
-            title="Upload new file"
-          >
-            <Upload size={14} />
-            <span className="hidden sm:block">New File</span>
+            <span className="hidden sm:block">Listevisning</span>
           </button>
         </nav>
       </header>
@@ -169,22 +196,21 @@ export default function App() {
         {view === 'calling' ? (
           <CallingView
             leads={leadsArray}
-            filterCategory={filterCategory}
-            onFilterChange={(cat) => {
-              setFilterCategory(cat)
-            }}
-            currentIndex={getIndex(filterCategory)}
-            onIndexChange={(idx) => setIndex(filterCategory, idx)}
+            filterCategory={currentFilter}
+            onFilterChange={setFilterCategory}
+            currentIndex={getIndex(currentFilter)}
+            onIndexChange={(idx) => setIndex(currentFilter, idx)}
             onCategorize={handleCategorize}
             counts={counts}
           />
         ) : (
           <ListView
             leads={leadsArray}
-            leadsRaw={leads}
-            categoriesMap={categories}
+            leadsRaw={activeList.leads}
+            categoriesMap={activeList.categories}
+            listName={activeList.name}
             onGoToLead={(orgNr) => {
-              const cat = categories[orgNr] || 'uncategorized'
+              const cat = activeList.categories[orgNr] || 'uncategorized'
               const filtered = leadsArray.filter(l => l._category === cat)
               const idx = filtered.findIndex(l => l.orgNr === orgNr)
               if (idx !== -1) {
