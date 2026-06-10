@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Phone, Building2, User, Mail, MapPin, Zap } from 'lucide-react'
+import { useMemo, useState, useEffect } from 'react'
+import { ChevronLeft, ChevronRight, Phone, Building2, User, Mail, MapPin, Zap, Pencil, StickyNote, X } from 'lucide-react'
 import { CATEGORIES } from '../App'
 
 const CATEGORY_ORDER = ['uncategorized', 'no_answer', 'responded', 'interested', 'meeting']
@@ -37,6 +37,7 @@ export default function CallingView({
   currentIndex,
   onIndexChange,
   onCategorize,
+  onEdit,
   counts,
 }) {
   const filteredLeads = useMemo(
@@ -47,6 +48,29 @@ export default function CallingView({
   const total = filteredLeads.length
   const safeIndex = total > 0 ? Math.min(currentIndex, total - 1) : 0
   const lead = filteredLeads[safeIndex] || null
+
+  const [showEdit, setShowEdit] = useState(false)
+  const [editForm, setEditForm] = useState({})
+
+  // Close edit panel when navigating to a different lead
+  useEffect(() => {
+    setShowEdit(false)
+    setEditForm({})
+  }, [lead?.orgNr])
+
+  const handleOpenEdit = () => {
+    setEditForm({
+      epost: (lead.epost === 'Mangler epost' ? '' : (lead.epost || '')),
+      telefonnummer: String(lead.telefonnummer || ''),
+      notat: lead.notat || '',
+    })
+    setShowEdit(true)
+  }
+
+  const handleSaveEdit = () => {
+    onEdit(lead.orgNr, editForm)
+    setShowEdit(false)
+  }
 
   const handleCategorize = (category) => {
     if (!lead) return
@@ -142,9 +166,17 @@ export default function CallingView({
                     <Building2 size={20} className="text-indigo-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight break-words">
-                      {lead.bedriftsnavn || '—'}
-                    </h2>
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight break-words">
+                        {lead.bedriftsnavn || '—'}
+                      </h2>
+                      {lead._hasEdits && (
+                        <span className="shrink-0 flex items-center gap-1 text-xs text-indigo-400 mt-1">
+                          <Pencil size={10} />
+                          Redigert
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1.5 mt-1.5 text-gray-400">
                       <User size={13} />
                       <span className="text-sm">{lead.eier || '—'}</span>
@@ -217,6 +249,85 @@ export default function CallingView({
                 {aktivity && (
                   <div className="sm:col-span-2 text-sm text-gray-500 italic leading-relaxed">
                     {aktivity}
+                  </div>
+                )}
+                {lead.notat && (
+                  <div className="sm:col-span-2 flex items-start gap-2 text-sm">
+                    <StickyNote size={14} className="text-indigo-500 mt-0.5 shrink-0" />
+                    <span className="text-indigo-300 whitespace-pre-wrap">{lead.notat}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Edit panel */}
+              <div className="border-t border-gray-800">
+                {!showEdit ? (
+                  <button
+                    onClick={handleOpenEdit}
+                    className="w-full flex items-center justify-center gap-1.5 px-4 py-3 text-xs text-gray-600 hover:text-gray-400 hover:bg-gray-800/50 transition-colors"
+                  >
+                    <Pencil size={11} />
+                    {lead._hasEdits ? 'Rediger opplysninger' : 'Legg til opplysninger'}
+                  </button>
+                ) : (
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-sm font-medium text-gray-300">Rediger opplysninger</h3>
+                      <button
+                        onClick={() => setShowEdit(false)}
+                        className="p-1 text-gray-600 hover:text-gray-400 transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">E-post</label>
+                      <input
+                        type="email"
+                        value={editForm.epost || ''}
+                        onChange={e => setEditForm(p => ({ ...p, epost: e.target.value }))}
+                        placeholder="epost@eksempel.no"
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Foretrukket telefonnummer</label>
+                      <input
+                        type="tel"
+                        value={editForm.telefonnummer || ''}
+                        onChange={e => setEditForm(p => ({ ...p, telefonnummer: e.target.value }))}
+                        placeholder="99 99 99 99"
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Notat</label>
+                      <textarea
+                        value={editForm.notat || ''}
+                        onChange={e => setEditForm(p => ({ ...p, notat: e.target.value }))}
+                        placeholder="Notater om samtalen, oppfølging, o.l..."
+                        rows={3}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={handleSaveEdit}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium text-white transition-colors"
+                      >
+                        Lagre
+                      </button>
+                      <button
+                        onClick={() => setShowEdit(false)}
+                        className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-gray-400 hover:text-white transition-colors"
+                      >
+                        Avbryt
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

@@ -106,6 +106,16 @@ export default function App() {
     }))
   }
 
+  const handleEdit = (orgNr, fields) => {
+    updateActiveList(list => ({
+      ...list,
+      edits: {
+        ...(list.edits || {}),
+        [orgNr]: { ...(list.edits?.[orgNr] || {}), ...fields },
+      },
+    }))
+  }
+
   const currentFilter = activeList?.filterCategory || 'uncategorized'
 
   const getIndex = (cat) => activeList?.indices?.[cat] || 0
@@ -131,11 +141,16 @@ export default function App() {
     )
   }
 
-  const leadsArray = Object.entries(activeList.leads).map(([orgNr, data]) => ({
-    orgNr,
-    ...data,
-    _category: activeList.categories[orgNr] || 'uncategorized',
-  }))
+  const leadsArray = Object.entries(activeList.leads).map(([orgNr, data]) => {
+    const edits = activeList.edits?.[orgNr] || {}
+    return {
+      orgNr,
+      ...data,
+      ...edits,
+      _category: activeList.categories[orgNr] || 'uncategorized',
+      _hasEdits: Object.values(edits).some(v => v !== '' && v != null),
+    }
+  })
 
   const counts = Object.fromEntries(
     Object.keys(CATEGORIES).map(cat => [
@@ -201,12 +216,14 @@ export default function App() {
             currentIndex={getIndex(currentFilter)}
             onIndexChange={(idx) => setIndex(currentFilter, idx)}
             onCategorize={handleCategorize}
+            onEdit={handleEdit}
             counts={counts}
           />
         ) : (
           <ListView
             leads={leadsArray}
             leadsRaw={activeList.leads}
+            editsMap={activeList.edits || {}}
             categoriesMap={activeList.categories}
             listName={activeList.name}
             onGoToLead={(orgNr) => {

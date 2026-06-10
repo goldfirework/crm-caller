@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Download, ArrowUpDown, ArrowUp, ArrowDown, Phone, ExternalLink } from 'lucide-react'
+import { Download, ArrowUpDown, ArrowUp, ArrowDown, Phone, ExternalLink, Pencil } from 'lucide-react'
 import { CATEGORIES } from '../App'
 
 const CATEGORY_ORDER = ['uncategorized', 'no_answer', 'responded', 'interested', 'meeting']
@@ -53,9 +53,10 @@ const COLUMNS = [
   { key: 'mobiloperator', label: 'Operatør', sortable: true },
   { key: 'orgNr', label: 'Org.nr', sortable: true },
   { key: 'registrert_dato', label: 'Registrert', sortable: true },
+  { key: 'notat', label: 'Notat', sortable: false },
 ]
 
-export default function ListView({ leads, leadsRaw, categoriesMap, listName, onGoToLead }) {
+export default function ListView({ leads, leadsRaw, editsMap, categoriesMap, listName, onGoToLead }) {
   const [filterCategory, setFilterCategory] = useState('all')
   const [sortKey, setSortKey] = useState('bedriftsnavn')
   const [sortDir, setSortDir] = useState('asc')
@@ -115,11 +116,14 @@ export default function ListView({ leads, leadsRaw, categoriesMap, listName, onG
 
   const handleDownload = (cat) => {
     const subset = Object.fromEntries(
-      Object.entries(leadsRaw).filter(([orgNr]) =>
-        cat === 'all'
-          ? true
-          : (categoriesMap[orgNr] || 'uncategorized') === cat
-      )
+      Object.entries(leadsRaw)
+        .filter(([orgNr]) =>
+          cat === 'all' ? true : (categoriesMap[orgNr] || 'uncategorized') === cat
+        )
+        .map(([orgNr, data]) => [
+          orgNr,
+          { ...data, ...(editsMap[orgNr] || {}) },
+        ])
     )
     const dateStr = new Date().toISOString().split('T')[0]
     const label = cat === 'all' ? 'alle' : CATEGORIES[cat]?.label.toLowerCase().replace(/\s+/g, '_')
@@ -244,8 +248,13 @@ export default function ListView({ leads, leadsRaw, categoriesMap, listName, onG
                     <td className="px-4 py-3">
                       <CategoryBadge category={lead._category} />
                     </td>
-                    <td className="px-4 py-3 font-medium text-white max-w-[200px] truncate">
-                      {lead.bedriftsnavn || '—'}
+                    <td className="px-4 py-3 font-medium text-white max-w-[200px]">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="truncate">{lead.bedriftsnavn || '—'}</span>
+                        {lead._hasEdits && (
+                          <Pencil size={10} className="text-indigo-500 shrink-0" title="Redigert" />
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
                       {lead.eier || '—'}
@@ -286,6 +295,10 @@ export default function ListView({ leads, leadsRaw, categoriesMap, listName, onG
                     </td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">
                       {lead.registrert_dato || '—'}
+                    </td>
+                    <td className="px-4 py-3 text-indigo-300 max-w-[200px] truncate text-xs italic"
+                        title={lead.notat}>
+                      {lead.notat || <span className="text-gray-800">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       <button
